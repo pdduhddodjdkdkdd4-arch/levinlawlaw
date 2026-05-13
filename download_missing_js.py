@@ -1,11 +1,11 @@
-import os
+﻿import os
 import urllib.request
 import ssl
 
 # Disable SSL verification
 ssl._create_default_https_context = ssl._create_unverified_context
 
-BASE_URL = "https://levinlawlaw.us.com"
+BASE_URL = "https://levinlawlaw.com"
 PROJECT_DIR = r"c:\Users\电脑\Desktop\us.com"
 
 # Missing JS files from previous download

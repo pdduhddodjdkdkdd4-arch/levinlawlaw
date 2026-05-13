@@ -1,11 +1,11 @@
-import os
+﻿import os
 import urllib.request
 import ssl
 
 # 禁用SSL验证
 ssl._create_default_https_context = ssl._create_unverified_context
 
-BASE_URL = "https://levinlawlaw.us.com"
+BASE_URL = "https://levinlawlaw.com"
 PROJECT_DIR = r"c:\Users\电脑\Desktop\us.com"
 
 # 收集到的所有需要的文件

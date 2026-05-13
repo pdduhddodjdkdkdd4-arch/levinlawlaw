@@ -1,8 +1,8 @@
-import os
+﻿import os
 import re
 
 NEW_PHONE = "+1 302-300-8008"
-NEW_EMAIL = "info@levinlawlaw.us.com"
+NEW_EMAIL = "info@levinlawlaw.com"
 NEW_ADDRESS = "2665 South Bayshore Dr, PH2B\nMiami, Florida 33133"
 
 HTML_FILES = []

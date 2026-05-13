@@ -1,4 +1,4 @@
-import os
+﻿import os
 import urllib.request
 import ssl
 
@@ -6,7 +6,7 @@ import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
 # 原站地址
-BASE_URL = "https://levinlawlaw.us.com"
+BASE_URL = "https://levinlawlaw.com"
 
 # 缺失的JS文件列表
 MISSING_FILES = [

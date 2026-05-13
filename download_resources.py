@@ -1,4 +1,4 @@
-import os
+﻿import os
 import urllib.request
 import ssl
 import time
@@ -7,7 +7,7 @@ import time
 ssl._create_default_https_context = ssl._create_unverified_context
 
 # 配置
-BASE_URL = "https://levinlawlaw.us.com"
+BASE_URL = "https://levinlawlaw.com"
 DOWNLOAD_DIR = os.getcwd()
 
 # 所有需要的文件

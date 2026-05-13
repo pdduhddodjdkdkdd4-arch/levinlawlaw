@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 
 # Read the file
@@ -12,7 +12,7 @@ original_content = content
 
 # Replace domain-based paths
 content = content.replace('/wp-content/', 'wp-content/')
-content = content.replace('https://levinlawlaw.us.com/', '')
+content = content.replace('https://levinlawlaw.com/', '')
 
 # Replace absolute paths starting with /wp-content/
 content = content.replace('src="/wp-content/', 'src="wp-content/')

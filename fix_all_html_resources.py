@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 
 # Paths
@@ -23,7 +23,7 @@ def fix_html_file(file_path):
     
     # Step 1: Convert absolute URLs to local paths
     content = content.replace('/wp-content/', 'wp-content/')
-    content = content.replace('https://levinlawlaw.us.com/', '')
+    content = content.replace('https://levinlawlaw.com/', '')
     content = content.replace('src="/wp-content/', 'src="wp-content/')
     content = content.replace('href="/wp-content/', 'href="wp-content/')
     
