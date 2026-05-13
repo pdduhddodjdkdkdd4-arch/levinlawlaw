@@ -1,223 +1,157 @@
-/**
- * CSV 数据管理工具类
- */
 class CSVManager {
     constructor() {
-        this.STORAGE_KEY = 'levinlaw_form_data';
-        this.CSV_HEADERS = ['id', 'name', 'email', 'phone', 'platform', 'amount', 'timestamp', 'ip'];
+        this.API_BASE = '/api';
     }
 
-    /**
-     * 从 localStorage 获取数据
-     */
-    getData() {
-        const data = localStorage.getItem(this.STORAGE_KEY);
-        return data ? JSON.parse(data) : [];
-    }
-
-    /**
-     * 保存数据到 localStorage
-     */
-    saveData(data) {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
-    }
-
-    /**
-     * 添加新记录
-     */
-    addRecord(record) {
-        const data = this.getData();
-        const newRecord = {
-            id: Date.now().toString(),
-            ...record,
-            timestamp: new Date().toISOString(),
-            ip: this.getClientIP()
-        };
-        data.unshift(newRecord);
-        this.saveData(data);
-        return newRecord;
-    }
-
-    /**
-     * 更新记录
-     */
-    updateRecord(id, updatedData) {
-        const data = this.getData();
-        const index = data.findIndex(r => r.id === id);
-        if (index !== -1) {
-            data[index] = { ...data[index], ...updatedData };
-            this.saveData(data);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * 删除记录
-     */
-    deleteRecord(id) {
-        const data = this.getData();
-        const filtered = data.filter(r => r.id !== id);
-        this.saveData(filtered);
-    }
-
-    /**
-     * 清空所有记录
-     */
-    clearAll() {
-        this.saveData([]);
-    }
-
-    /**
-     * 获取客户端 IP（模拟）
-     */
-    getClientIP() {
-        return '127.0.0.1'; // 实际项目中可以通过第三方API获取
-    }
-
-    /**
-     * 导出 CSV
-     */
-    exportCSV(records = null, filename = null) {
-        const data = records || this.getData();
-        
-        if (data.length === 0) {
-            alert('没有数据可导出');
-            return;
-        }
-
-        // 构建 CSV 内容
-        const headers = ['ID', '姓名', '邮箱', '电话', '平台', '金额', '提交时间', 'IP'];
-        const csvContent = [
-            headers.join(','),
-            ...data.map(record => [
-                record.id,
-                `"${record.name}"`,
-                record.email,
-                record.phone,
-                `"${record.platform}"`,
-                record.amount,
-                record.timestamp,
-                record.ip
-            ].join(','))
-        ].join('\n');
-
-        // 创建下载
-        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        
-        if (!filename) {
-            const now = new Date();
-            const timeStr = now.getFullYear() + 
-                String(now.getMonth() + 1).padStart(2, '0') + 
-                String(now.getDate()).padStart(2, '0') + 
-                String(now.getHours()).padStart(2, '0') + 
-                String(now.getMinutes()).padStart(2, '0') + 
-                String(now.getSeconds()).padStart(2, '0');
-            filename = `${timeStr}_levinlaw.csv`;
-        }
-        
-        link.setAttribute('href', url);
-        link.setAttribute('download', filename);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    }
-
-    /**
-     * 导入 CSV
-     */
-    importCSV(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const content = e.target.result;
-                    const lines = content.split('\n').filter(line => line.trim());
-                    
-                    if (lines.length < 2) {
-                        reject('CSV 文件格式不正确');
-                        return;
-                    }
-
-                    const data = [];
-                    for (let i = 1; i < lines.length; i++) {
-                        const values = this.parseCSVLine(lines[i]);
-                        if (values.length >= 8) {
-                            data.push({
-                                id: values[0],
-                                name: values[1].replace(/"/g, ''),
-                                email: values[2],
-                                phone: values[3],
-                                platform: values[4].replace(/"/g, ''),
-                                amount: values[5],
-                                timestamp: values[6],
-                                ip: values[7]
-                            });
-                        }
-                    }
-                    
-                    this.saveData(data);
-                    resolve(data);
-                } catch (error) {
-                    reject('解析 CSV 文件失败: ' + error.message);
-                }
-            };
-            reader.onerror = () => reject('读取文件失败');
-            reader.readAsText(file);
-        });
-    }
-
-    /**
-     * 解析 CSV 行（处理引号）
-     */
-    parseCSVLine(line) {
-        const result = [];
-        let current = '';
-        let inQuotes = false;
-        
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
-            
-            if (char === '"') {
-                inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
-                result.push(current.trim());
-                current = '';
-            } else {
-                current += char;
+    async getData(page = 1, limit = 50) {
+        try {
+            const token = localStorage.getItem('levinlaw_admin_token');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = 'Bearer ' + token;
             }
+            const response = await fetch(this.API_BASE + '/records.php?page=' + page + '&limit=' + limit, {
+                method: 'GET',
+                headers: headers
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch data');
+            }
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            return { data: [], total: 0, page: 1, limit: 50, totalPages: 0 };
         }
-        result.push(current.trim());
-        
-        return result;
+    }
+
+    async addRecord(record) {
+        try {
+            const response = await fetch(this.API_BASE + '/records.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(record)
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to add record');
+            }
+            const newRecord = await response.json();
+            return newRecord;
+        } catch (error) {
+            console.error('Error adding record:', error);
+            throw error;
+        }
+    }
+
+    async updateRecord(id, updatedData) {
+        try {
+            const token = localStorage.getItem('levinlaw_admin_token');
+            const response = await fetch(this.API_BASE + '/records.php?id=' + id, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify(updatedData)
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to update record');
+            }
+            const record = await response.json();
+            return record;
+        } catch (error) {
+            console.error('Error updating record:', error);
+            throw error;
+        }
+    }
+
+    async deleteRecord(id) {
+        try {
+            const token = localStorage.getItem('levinlaw_admin_token');
+            const response = await fetch(this.API_BASE + '/records.php?id=' + id, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete record');
+            }
+            return true;
+        } catch (error) {
+            console.error('Error deleting record:', error);
+            throw error;
+        }
+    }
+
+    async exportCSV() {
+        try {
+            const token = localStorage.getItem('levinlaw_admin_token');
+            const response = await fetch(this.API_BASE + '/export.php', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Failed to export CSV');
+            }
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const now = new Date();
+            const timeStr = now.getFullYear() +
+                String(now.getMonth() + 1).padStart(2, '0') +
+                String(now.getDate()).padStart(2, '0') +
+                String(now.getHours()).padStart(2, '0') +
+                String(now.getMinutes()).padStart(2, '0') +
+                String(now.getSeconds()).padStart(2, '0');
+            link.href = url;
+            link.download = timeStr + '_levinlaw.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error exporting CSV:', error);
+            alert('Export failed: ' + error.message);
+        }
     }
 }
 
-// 全局实例
 window.csvManager = new CSVManager();
 
-/**
- * 登录管理
- */
 class AuthManager {
     constructor() {
-        this.CREDENTIALS = {
-            username: 'admin_5_9',
-            password: 'admin@2659Levinlaw'
-        };
         this.AUTH_KEY = 'levinlaw_admin_auth';
+        this.TOKEN_KEY = 'levinlaw_admin_token';
+        this.API_BASE = '/api';
     }
 
-    login(username, password) {
-        if (username === this.CREDENTIALS.username && password === this.CREDENTIALS.password) {
-            localStorage.setItem(this.AUTH_KEY, 'true');
-            return true;
+    async login(username, password) {
+        try {
+            const response = await fetch(this.API_BASE + '/auth.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, password: password })
+            });
+            if (!response.ok) {
+                return false;
+            }
+            const result = await response.json();
+            if (result.success && result.token) {
+                localStorage.setItem(this.AUTH_KEY, 'true');
+                localStorage.setItem(this.TOKEN_KEY, result.token);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Login error:', error);
+            return false;
         }
-        return false;
     }
 
     isLoggedIn() {
@@ -226,20 +160,17 @@ class AuthManager {
 
     logout() {
         localStorage.removeItem(this.AUTH_KEY);
+        localStorage.removeItem(this.TOKEN_KEY);
+    }
+
+    getToken() {
+        return localStorage.getItem(this.TOKEN_KEY);
     }
 }
 
 window.authManager = new AuthManager();
 
-/**
- * 表单验证工具类
- */
 class FormValidator {
-    /**
-     * 验证姓名
-     * @param {string} name - 姓名字符串
-     * @returns {object} 验证结果 { valid: boolean, message: string }
-     */
     static validateName(name) {
         if (!name || !name.trim()) {
             return { valid: false, message: 'Name is required' };
@@ -253,11 +184,6 @@ class FormValidator {
         return { valid: true, message: '' };
     }
 
-    /**
-     * 验证邮箱
-     * @param {string} email - 邮箱字符串
-     * @returns {object} 验证结果
-     */
     static validateEmail(email) {
         if (!email || !email.trim()) {
             return { valid: false, message: 'Email is required' };
@@ -269,11 +195,6 @@ class FormValidator {
         return { valid: true, message: '' };
     }
 
-    /**
-     * 验证电话
-     * @param {string} phone - 电话字符串
-     * @returns {object} 验证结果
-     */
     static validatePhone(phone) {
         if (!phone || !phone.trim()) {
             return { valid: false, message: 'Phone number is required' };
@@ -285,11 +206,6 @@ class FormValidator {
         return { valid: true, message: '' };
     }
 
-    /**
-     * 验证平台名称
-     * @param {string} platform - 平台名称
-     * @returns {object} 验证结果
-     */
     static validatePlatform(platform) {
         if (!platform || !platform.trim()) {
             return { valid: false, message: 'Platform name is required' };
@@ -303,11 +219,6 @@ class FormValidator {
         return { valid: true, message: '' };
     }
 
-    /**
-     * 验证金额
-     * @param {string} amount - 金额字符串
-     * @returns {object} 验证结果
-     */
     static validateAmount(amount) {
         if (!amount || !amount.trim()) {
             return { valid: false, message: 'Amount is required' };
@@ -319,57 +230,45 @@ class FormValidator {
         return { valid: true, message: '' };
     }
 
-    /**
-     * 验证完整表单
-     * @param {object} formData - 表单数据对象
-     * @returns {object} 验证结果 { valid: boolean, errors: object }
-     */
     static validateForm(formData) {
         const errors = {};
-        
+
         const nameResult = this.validateName(formData.name);
         if (!nameResult.valid) errors.name = nameResult.message;
-        
+
         const emailResult = this.validateEmail(formData.email);
         if (!emailResult.valid) errors.email = emailResult.message;
-        
+
         const phoneResult = this.validatePhone(formData.phone);
         if (!phoneResult.valid) errors.phone = phoneResult.message;
-        
+
         const platformResult = this.validatePlatform(formData.platform);
         if (!platformResult.valid) errors.platform = platformResult.message;
-        
+
         const amountResult = this.validateAmount(formData.amount);
         if (!amountResult.valid) errors.amount = amountResult.message;
-        
+
         return {
             valid: Object.keys(errors).length === 0,
             errors: errors
         };
     }
 
-    /**
-     * 显示表单错误
-     * @param {HTMLElement} formElement - 表单元素
-     * @param {object} errors - 错误信息对象
-     */
     static showErrors(formElement, errors) {
-        // 清除之前的错误
         this.clearErrors(formElement);
-        
-        // 添加新错误
+
         for (const [field, message] of Object.entries(errors)) {
-            const input = formElement.querySelector(`[name="${field}"], #edit-${field}`);
+            const input = formElement.querySelector('[name="' + field + '"], #edit-' + field);
             if (input) {
                 input.classList.add('input-error');
-                
+
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'error-message';
                 errorDiv.textContent = message;
                 errorDiv.style.color = '#dc2626';
                 errorDiv.style.fontSize = '12px';
                 errorDiv.style.marginTop = '4px';
-                
+
                 const formGroup = input.closest('.form-group');
                 if (formGroup) {
                     formGroup.appendChild(errorDiv);
@@ -378,56 +277,49 @@ class FormValidator {
         }
     }
 
-    /**
-     * 清除表单错误
-     * @param {HTMLElement} formElement - 表单元素
-     */
     static clearErrors(formElement) {
-        formElement.querySelectorAll('.input-error').forEach(input => {
+        formElement.querySelectorAll('.input-error').forEach(function(input) {
             input.classList.remove('input-error');
         });
-        formElement.querySelectorAll('.error-message').forEach(el => {
+        formElement.querySelectorAll('.error-message').forEach(function(el) {
             el.remove();
         });
     }
 
-    /**
-     * 为输入添加实时验证
-     * @param {HTMLElement} formElement - 表单元素
-     */
     static addRealtimeValidation(formElement) {
         const inputs = formElement.querySelectorAll('input');
-        inputs.forEach(input => {
-            input.addEventListener('blur', () => {
+        const self = this;
+        inputs.forEach(function(input) {
+            input.addEventListener('blur', function() {
                 const fieldName = input.name || input.id.replace('edit-', '');
                 const value = input.value;
-                
+
                 let result;
                 switch (fieldName) {
                     case 'name':
-                        result = this.validateName(value);
+                        result = self.validateName(value);
                         break;
                     case 'email':
-                        result = this.validateEmail(value);
+                        result = self.validateEmail(value);
                         break;
                     case 'phone':
-                        result = this.validatePhone(value);
+                        result = self.validatePhone(value);
                         break;
                     case 'platform':
-                        result = this.validatePlatform(value);
+                        result = self.validatePlatform(value);
                         break;
                     case 'amount':
-                        result = this.validateAmount(value);
+                        result = self.validateAmount(value);
                         break;
                     default:
                         return;
                 }
-                
+
                 const formGroup = input.closest('.form-group');
                 if (!formGroup) return;
-                
+
                 const existingError = formGroup.querySelector('.error-message');
-                
+
                 if (!result.valid) {
                     input.classList.add('input-error');
                     if (!existingError) {
@@ -446,11 +338,11 @@ class FormValidator {
                     if (existingError) existingError.remove();
                 }
             });
-            
-            input.addEventListener('input', () => {
+
+            input.addEventListener('input', function() {
                 input.classList.remove('input-error');
                 const formGroup = input.closest('.form-group');
-                const existingError = formGroup?.querySelector('.error-message');
+                const existingError = formGroup ? formGroup.querySelector('.error-message') : null;
                 if (existingError) existingError.remove();
             });
         });
@@ -459,9 +351,6 @@ class FormValidator {
 
 window.FormValidator = FormValidator;
 
-/**
- * 通用表单处理函数
- */
 window.handleFormSubmit = function(event) {
     event.preventDefault();
 
@@ -475,12 +364,10 @@ window.handleFormSubmit = function(event) {
         amount: formData.get('amount')
     };
 
-    // 验证表单
     const validation = FormValidator.validateForm(data);
     if (!validation.valid) {
         FormValidator.showErrors(form, validation.errors);
 
-        // 滚动到第一个错误
         const firstError = form.querySelector('.input-error');
         if (firstError) {
             firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -489,19 +376,15 @@ window.handleFormSubmit = function(event) {
         return;
     }
 
-    // 清除错误状态
     FormValidator.clearErrors(form);
 
-    // 保存到本地存储
-    const record = csvManager.addRecord(data);
-
-    // 跳转到感谢页面
-    window.location.href = 'thank-you.html';
+    csvManager.addRecord(data).then(function() {
+        window.location.href = 'thank-you.html';
+    }).catch(function(error) {
+        alert('Submission failed, please try again: ' + error.message);
+    });
 };
 
-/**
- * 初始化表单
- */
 window.initContactForm = function() {
     const form = document.getElementById('contact-form');
     if (form) {
@@ -509,14 +392,12 @@ window.initContactForm = function() {
     }
 };
 
-// HTML escape
 window.escapeHtml = function(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 };
 
-// Date format
 window.formatDate = function(isoString) {
     const date = new Date(isoString);
     return date.toLocaleString('en-US', {

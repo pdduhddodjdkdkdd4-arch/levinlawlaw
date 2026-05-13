@@ -584,17 +584,6 @@
 
         <!-- 操作栏 -->
         <div class="action-bar">
-            <button class="btn btn-success" onclick="document.getElementById('import-file').click()">
-                <i class="fas fa-upload"></i>
-                Import CSV
-            </button>
-            <input type="file" id="import-file" accept=".csv" style="display: none" onchange="handleImport(event)">
-            
-            <button class="btn btn-primary" onclick="exportSelected()">
-                <i class="fas fa-download"></i>
-                Export Selected
-            </button>
-            
             <button class="btn btn-primary" onclick="exportAll()">
                 <i class="fas fa-file-csv"></i>
                 Export All
@@ -603,11 +592,6 @@
             <button class="btn btn-secondary" onclick="refreshData()">
                 <i class="fas fa-sync-alt"></i>
                 Refresh
-            </button>
-            
-            <button class="btn btn-danger" onclick="clearAllData()">
-                <i class="fas fa-trash"></i>
-                Clear All
             </button>
         </div>
 
@@ -749,9 +733,8 @@
 
     <script src="js/csv-manager.js"></script>
     <script>
-        // 检查登录状态
         if (!authManager.isLoggedIn()) {
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
         }
 
         let currentData = [];
@@ -761,51 +744,46 @@
         let itemsPerPage = 10;
         let deleteTargetId = null;
 
-        // 初始化
         function init() {
             refreshData();
         }
 
-        // 打开模态框时的辅助函数
         function openModal(modalId) {
-            const modal = document.getElementById(modalId);
+            var modal = document.getElementById(modalId);
             modal.classList.add('show');
-            
-            // 如果是编辑模态框，添加实时验证
             if (modalId === 'edit-modal') {
-                const form = document.getElementById('edit-form');
+                var form = document.getElementById('edit-form');
                 FormValidator.addRealtimeValidation(form);
             }
         }
 
-        // 刷新数据
-        function refreshData() {
-            currentData = csvManager.getData();
+        async function refreshData() {
+            var result = await csvManager.getData(1, 1000);
+            currentData = result.data || [];
             applyFilters();
-            document.getElementById('total-count').textContent = currentData.length;
+            document.getElementById('total-count').textContent = result.total || currentData.length;
         }
 
-        // 应用筛选
         function applyFilters() {
-            const nameFilter = document.getElementById('filter-name').value.toLowerCase();
-            const emailFilter = document.getElementById('filter-email').value.toLowerCase();
-            const platformFilter = document.getElementById('filter-platform').value.toLowerCase();
-            const ipFilter = document.getElementById('filter-ip').value.toLowerCase();
-            const dateStart = document.getElementById('filter-date-start').value;
-            const dateEnd = document.getElementById('filter-date-end').value;
+            var nameFilter = document.getElementById('filter-name').value.toLowerCase();
+            var emailFilter = document.getElementById('filter-email').value.toLowerCase();
+            var platformFilter = document.getElementById('filter-platform').value.toLowerCase();
+            var ipFilter = document.getElementById('filter-ip').value.toLowerCase();
+            var dateStart = document.getElementById('filter-date-start').value;
+            var dateEnd = document.getElementById('filter-date-end').value;
 
-            filteredData = currentData.filter(record => {
+            filteredData = currentData.filter(function(record) {
                 if (nameFilter && !record.name.toLowerCase().includes(nameFilter)) return false;
                 if (emailFilter && !record.email.toLowerCase().includes(emailFilter)) return false;
                 if (platformFilter && !record.platform.toLowerCase().includes(platformFilter)) return false;
-                if (ipFilter && !record.ip.toLowerCase().includes(ipFilter)) return false;
-                
+                if (ipFilter && !(record.ip || '').toLowerCase().includes(ipFilter)) return false;
+
                 if (dateStart || dateEnd) {
-                    const recordDate = new Date(record.timestamp).toISOString().split('T')[0];
+                    var recordDate = new Date(record.created_at).toISOString().split('T')[0];
                     if (dateStart && recordDate < dateStart) return false;
                     if (dateEnd && recordDate > dateEnd) return false;
                 }
-                
+
                 return true;
             });
 
@@ -813,105 +791,78 @@
             renderTable();
         }
 
-        // 渲染表格
         function renderTable() {
-            const tbody = document.getElementById('table-body');
-            const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
-            const pageData = filteredData.slice(startIndex, endIndex);
+            var tbody = document.getElementById('table-body');
+            var totalPages = Math.ceil(filteredData.length / itemsPerPage);
+            var startIndex = (currentPage - 1) * itemsPerPage;
+            var endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
+            var pageData = filteredData.slice(startIndex, endIndex);
 
             if (pageData.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="10">
-                            <div class="empty-state">
-                                <i class="fas fa-inbox"></i>
-                                <p>暂无数据</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><i class="fas fa-inbox"></i><p>No data</p></div></td></tr>';
             } else {
-                tbody.innerHTML = pageData.map(record => `
-                    <tr>
-                        <td class="checkbox-cell">
-                            <input type="checkbox" ${selectedIds.has(record.id) ? 'checked' : ''} onchange="toggleSelect('${record.id}')">
-                        </td>
-                        <td>${record.id.substring(0, 8)}...</td>
-                        <td>${escapeHtml(record.name)}</td>
-                        <td>${escapeHtml(record.email)}</td>
-                        <td>${escapeHtml(record.phone)}</td>
-                        <td>${escapeHtml(record.platform)}</td>
-                        <td>${escapeHtml(record.amount)}</td>
-                        <td>${formatDate(record.timestamp)}</td>
-                        <td>${escapeHtml(record.ip)}</td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="action-btn view" onclick="viewRecord('${record.id}')">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="action-btn edit" onclick="editRecord('${record.id}')">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="action-btn delete" onclick="deleteRecord('${record.id}')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `).join('');
+                tbody.innerHTML = pageData.map(function(record) {
+                    return '<tr>' +
+                        '<td class="checkbox-cell"><input type="checkbox" ' + (selectedIds.has(record.id) ? 'checked' : '') + ' onchange="toggleSelect(' + record.id + ')"></td>' +
+                        '<td>' + record.id + '</td>' +
+                        '<td>' + escapeHtml(record.name) + '</td>' +
+                        '<td>' + escapeHtml(record.email) + '</td>' +
+                        '<td>' + escapeHtml(record.phone) + '</td>' +
+                        '<td>' + escapeHtml(record.platform) + '</td>' +
+                        '<td>' + escapeHtml(record.amount) + '</td>' +
+                        '<td>' + formatDate(record.created_at) + '</td>' +
+                        '<td>' + escapeHtml(record.ip || '') + '</td>' +
+                        '<td><div class="action-buttons">' +
+                        '<button class="action-btn view" onclick="viewRecord(' + record.id + ')"><i class="fas fa-eye"></i></button>' +
+                        '<button class="action-btn edit" onclick="editRecord(' + record.id + ')"><i class="fas fa-edit"></i></button>' +
+                        '<button class="action-btn delete" onclick="deleteRecord(' + record.id + ')"><i class="fas fa-trash"></i></button>' +
+                        '</div></td></tr>';
+                }).join('');
             }
 
-            // 更新分页信息
-            document.getElementById('pagination-info').textContent = 
-                filteredData.length === 0 ? 
-                '显示 0 - 0 条，共 0 条记录' :
-                `显示 ${startIndex + 1} - ${endIndex} 条，共 ${filteredData.length} 条记录`;
+            document.getElementById('pagination-info').textContent =
+                filteredData.length === 0 ?
+                'Showing 0 - 0 of 0 records' :
+                'Showing ' + (startIndex + 1) + ' - ' + endIndex + ' of ' + filteredData.length + ' records';
 
-            // 更新分页按钮
             renderPagination(totalPages);
-            
-            // 更新全选状态
-            const pageIds = pageData.map(r => r.id);
-            const allSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+
+            var pageIds = pageData.map(function(r) { return r.id; });
+            var allSelected = pageIds.length > 0 && pageIds.every(function(id) { return selectedIds.has(id); });
             document.getElementById('select-all').checked = allSelected;
         }
 
-        // 渲染分页
         function renderPagination(totalPages) {
-            const container = document.getElementById('pagination-buttons');
-            let html = '';
+            var container = document.getElementById('pagination-buttons');
+            var html = '';
 
-            html += `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})"><i class="fas fa-chevron-left"></i></button>`;
+            html += '<button class="page-btn" ' + (currentPage === 1 ? 'disabled' : '') + ' onclick="goToPage(' + (currentPage - 1) + ')"><i class="fas fa-chevron-left"></i></button>';
 
-            for (let i = 1; i <= totalPages; i++) {
+            for (var i = 1; i <= totalPages; i++) {
                 if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-                    html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+                    html += '<button class="page-btn ' + (i === currentPage ? 'active' : '') + '" onclick="goToPage(' + i + ')">' + i + '</button>';
                 } else if (i === currentPage - 3 || i === currentPage + 3) {
-                    html += `<button class="page-btn" disabled>...</button>`;
+                    html += '<button class="page-btn" disabled>...</button>';
                 }
             }
 
-            html += `<button class="page-btn" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})"><i class="fas fa-chevron-right"></i></button>`;
+            html += '<button class="page-btn" ' + (currentPage === totalPages || totalPages === 0 ? 'disabled' : '') + ' onclick="goToPage(' + (currentPage + 1) + ')"><i class="fas fa-chevron-right"></i></button>';
 
             container.innerHTML = html;
         }
 
-        // 跳转到页面
         function goToPage(page) {
             currentPage = page;
             renderTable();
         }
 
-        // 全选切换
         function toggleSelectAll() {
-            const isChecked = document.getElementById('select-all').checked;
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
-            const pageData = filteredData.slice(startIndex, endIndex);
+            var isChecked = document.getElementById('select-all').checked;
+            var startIndex = (currentPage - 1) * itemsPerPage;
+            var endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
+            var pageData = filteredData.slice(startIndex, endIndex);
 
-            pageData.forEach(record => {
+            pageData.forEach(function(record) {
                 if (isChecked) {
                     selectedIds.add(record.id);
                 } else {
@@ -922,7 +873,6 @@
             renderTable();
         }
 
-        // 单个选择
         function toggleSelect(id) {
             if (selectedIds.has(id)) {
                 selectedIds.delete(id);
@@ -932,53 +882,26 @@
             renderTable();
         }
 
-        // 查看详情
         function viewRecord(id) {
-            const record = currentData.find(r => r.id === id);
+            var record = currentData.find(function(r) { return r.id === id; });
             if (!record) return;
 
-            const content = `
-                <div class="detail-item">
-                    <div class="detail-label">ID</div>
-                    <div class="detail-value">${record.id}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Name</div>
-                    <div class="detail-value">${escapeHtml(record.name)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Email</div>
-                    <div class="detail-value">${escapeHtml(record.email)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Phone</div>
-                    <div class="detail-value">${escapeHtml(record.phone)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Platform</div>
-                    <div class="detail-value">${escapeHtml(record.platform)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Amount</div>
-                    <div class="detail-value">${escapeHtml(record.amount)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Submitted</div>
-                    <div class="detail-value">${formatDate(record.timestamp)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">IP Address</div>
-                    <div class="detail-value">${escapeHtml(record.ip)}</div>
-                </div>
-            `;
+            var content =
+                '<div class="detail-item"><div class="detail-label">ID</div><div class="detail-value">' + record.id + '</div></div>' +
+                '<div class="detail-item"><div class="detail-label">Name</div><div class="detail-value">' + escapeHtml(record.name) + '</div></div>' +
+                '<div class="detail-item"><div class="detail-label">Email</div><div class="detail-value">' + escapeHtml(record.email) + '</div></div>' +
+                '<div class="detail-item"><div class="detail-label">Phone</div><div class="detail-value">' + escapeHtml(record.phone) + '</div></div>' +
+                '<div class="detail-item"><div class="detail-label">Platform</div><div class="detail-value">' + escapeHtml(record.platform) + '</div></div>' +
+                '<div class="detail-item"><div class="detail-label">Amount</div><div class="detail-value">' + escapeHtml(record.amount) + '</div></div>' +
+                '<div class="detail-item"><div class="detail-label">Submitted</div><div class="detail-value">' + formatDate(record.created_at) + '</div></div>' +
+                '<div class="detail-item"><div class="detail-label">IP Address</div><div class="detail-value">' + escapeHtml(record.ip || '') + '</div></div>';
 
             document.getElementById('view-modal-content').innerHTML = content;
             openModal('view-modal');
         }
 
-        // 编辑记录
         function editRecord(id) {
-            const record = currentData.find(r => r.id === id);
+            var record = currentData.find(function(r) { return r.id === id; });
             if (!record) return;
 
             document.getElementById('edit-id').value = record.id;
@@ -988,17 +911,15 @@
             document.getElementById('edit-platform').value = record.platform;
             document.getElementById('edit-amount').value = record.amount;
 
-            // 清除之前的错误状态
-            const form = document.getElementById('edit-form');
+            var form = document.getElementById('edit-form');
             FormValidator.clearErrors(form);
 
             openModal('edit-modal');
         }
 
-        // 保存编辑
-        function saveEdit() {
-            const form = document.getElementById('edit-form');
-            const data = {
+        async function saveEdit() {
+            var form = document.getElementById('edit-form');
+            var data = {
                 name: document.getElementById('edit-name').value,
                 email: document.getElementById('edit-email').value,
                 phone: document.getElementById('edit-phone').value,
@@ -1006,13 +927,10 @@
                 amount: document.getElementById('edit-amount').value
             };
 
-            // 验证表单
-            const validation = FormValidator.validateForm(data);
+            var validation = FormValidator.validateForm(data);
             if (!validation.valid) {
                 FormValidator.showErrors(form, validation.errors);
-                
-                // 滚动到第一个错误
-                const firstError = form.querySelector('.input-error');
+                var firstError = form.querySelector('.input-error');
                 if (firstError) {
                     firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     firstError.focus();
@@ -1020,86 +938,51 @@
                 return;
             }
 
-            // 清除错误状态并保存
             FormValidator.clearErrors(form);
-            const id = document.getElementById('edit-id').value;
-            csvManager.updateRecord(id, data);
-            closeModal('edit-modal');
-            refreshData();
+            var id = document.getElementById('edit-id').value;
+            try {
+                await csvManager.updateRecord(id, data);
+                closeModal('edit-modal');
+                refreshData();
+            } catch (error) {
+                alert('Save failed: ' + error.message);
+            }
         }
 
-        // 删除记录
         function deleteRecord(id) {
             deleteTargetId = id;
             openModal('delete-modal');
         }
 
-        // 确认删除
-        function confirmDelete() {
+        async function confirmDelete() {
             if (deleteTargetId) {
-                csvManager.deleteRecord(deleteTargetId);
-                selectedIds.delete(deleteTargetId);
-                deleteTargetId = null;
-                closeModal('delete-modal');
-                refreshData();
+                try {
+                    await csvManager.deleteRecord(deleteTargetId);
+                    selectedIds.delete(deleteTargetId);
+                    deleteTargetId = null;
+                    closeModal('delete-modal');
+                    refreshData();
+                } catch (error) {
+                    alert('Delete failed: ' + error.message);
+                }
             }
         }
 
-        // 清空全部
-        function clearAllData() {
-            if (confirm('Are you sure you want to clear all data? This action cannot be undone!')) {
-                csvManager.clearAll();
-                selectedIds.clear();
-                refreshData();
-            }
+        async function exportAll() {
+            await csvManager.exportCSV();
         }
 
-        // 导出选中
-        function exportSelected() {
-            if (selectedIds.size === 0) {
-                alert('Please select records to export');
-                return;
-            }
-
-            const selectedRecords = currentData.filter(r => selectedIds.has(r.id));
-            csvManager.exportCSV(selectedRecords);
-        }
-
-        // 导出全部
-        function exportAll() {
-            csvManager.exportCSV();
-        }
-
-        // 导入CSV
-        async function handleImport(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            try {
-                await csvManager.importCSV(file);
-                alert('Import successful!');
-                refreshData();
-            } catch (error) {
-                alert(error);
-            }
-
-            event.target.value = '';
-        }
-
-        // 退出登录
         function logout() {
             authManager.logout();
             window.location.href = 'index.html';
         }
 
-        // 关闭模态框
         function closeModal(id) {
             document.getElementById(id).classList.remove('show');
         }
 
-        // 格式化日期
         function formatDate(dateStr) {
-            const date = new Date(dateStr);
+            var date = new Date(dateStr);
             return date.toLocaleString('zh-CN', {
                 year: 'numeric',
                 month: '2-digit',
@@ -1110,15 +993,13 @@
             });
         }
 
-        // HTML转义
         function escapeHtml(str) {
-            const div = document.createElement('div');
+            var div = document.createElement('div');
             div.textContent = str;
             return div.innerHTML;
         }
 
-        // 点击模态框外部关闭
-        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
             overlay.addEventListener('click', function(e) {
                 if (e.target === this) {
                     this.classList.remove('show');
@@ -1126,7 +1007,6 @@
             });
         });
 
-        // 初始化
         init();
     </script>
 </body>
