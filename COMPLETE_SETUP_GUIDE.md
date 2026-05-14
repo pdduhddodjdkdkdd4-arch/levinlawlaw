@@ -1,4 +1,4 @@
-# 🎯 Elementor 完整设置指南
+﻿# 🎯 Elementor 完整设置指南
 
 ## 🔴 当前状态
 **问题：JS文件全部缺失！** CSS文件完好，但关键的JavaScript文件没有下载到。
@@ -36,7 +36,7 @@ wp-content/cache/wpo-minify/1776568923/assets/
 
 ### 步骤：
 1. **用Chrome/Firefox浏览器打开原站**
-   - 访问：https://levinlawlaw.us.com
+   - 访问：https://levinlawlaw.com
 
 2. **打开开发者工具**
    - 按 `F12` 键
@@ -73,14 +73,14 @@ wp-content/cache/wpo-minify/1776568923/assets/
 
 ### 使用 HTTrack（免费）
 1. 下载并安装 HTTrack: https://www.httrack.com/
-2. 新建项目，输入网址：https://levinlawlaw.us.com
+2. 新建项目，输入网址：https://levinlawlaw.com
 3. 设置保存目录为当前项目文件夹
 4. 开始抓取，确保包含所有文件类型
 
 ### 使用 wget（命令行）
 ```bash
 wget --mirror --convert-links --adjust-extension --page-requisites \
-     --no-parent https://levinlawlaw.us.com
+     --no-parent https://levinlawlaw.com
 ```
 
 ---
