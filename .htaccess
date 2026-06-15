@@ -1,0 +1,26 @@
+# Enable RewriteEngine
+RewriteEngine On
+RewriteBase /
+
+# Don't rewrite files or directories that exist
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Don't rewrite .php files (API endpoints)
+RewriteRule ^api/ - [L]
+
+# Don't rewrite existing .html files
+RewriteRule ^(.*)\.html$ - [L]
+
+# Rewrite clean URLs to .html files
+# Single level: /about-us -> /about-us.html
+RewriteRule ^([^/]+)$ $1.html [L]
+
+# Multi level: /services/phishing -> /services/phishing.html
+RewriteRule ^([^/]+)/([^/]+)$ $1/$2.html [L]
+
+# Force clean URLs (remove .html extension from URLs)
+# This makes /about-us.html redirect to /about-us
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^([^/]+)\.html$ /$1 [R=301,L]

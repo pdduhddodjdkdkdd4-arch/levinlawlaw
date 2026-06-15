@@ -583,9 +583,9 @@ Please assist with my case. Thank you!
         return {
             // Messenger URL Scheme（用于App跳转）
             schemeUrl: `${this.MESSENGER_SCHEME}user-thread/${pageId}`,
-            // 网页版链接
-            webUrl: `${this.MESSENGER_WEB_URL}${pageId}`,
-            // m.me链接（自动检测App或网页）
+            // 网页版链接（包含预填充消息）
+            webUrl: `${this.MESSENGER_WEB_URL}${pageId}?text=${message}`,
+            // m.me链接（自动检测App或网页，包含预填充消息）
             mMeUrl: `https://m.me/${pageId}?text=${message}`
         };
     }
@@ -607,66 +607,27 @@ Please assist with my case. Thank you!
         const platform = this.detectPlatform();
         const urls = this.buildURL(formData);
         
-        // 创建隐藏的iframe用于iOS检测
-        let iframe = null;
+        // 使用m.me链接，它会自动检测并打开Messenger应用（如果已安装）
+        // m.me链接支持?text=参数来预填充消息
+        const mMeUrl = urls.mMeUrl;
         
-        // 设置定时器检测跳转是否成功
-        const timeout = setTimeout(() => {
-            // 跳转失败，尝试回退方案
-            if (platform === 'ios') {
-                // iOS: 跳转到App Store
-                window.location.href = this.IOS_APP_STORE_URL;
-            } else if (platform === 'android') {
-                // Android: 尝试使用intent或跳转到Play Store
-                const intentUrl = `intent://user-thread/${this.DEFAULT_PAGE_ID}#Intent;scheme=fb-messenger;package=com.facebook.orca;end`;
-                window.location.href = intentUrl;
-                
-                // 设置二次回退
-                setTimeout(() => {
-                    window.location.href = this.ANDROID_PLAY_STORE_URL;
-                }, 2000);
-            } else {
-                // Web: 打开网页版
-                window.open(urls.webUrl, '_blank');
-            }
-        }, 1000);
-
-        // 尝试跳转
         if (platform === 'ios') {
-            // iOS使用iframe方式检测
-            iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = urls.schemeUrl;
-            document.body.appendChild(iframe);
+            // iOS: 使用m.me链接，系统会自动处理应用跳转或网页回退
+            window.location.href = mMeUrl;
         } else if (platform === 'android') {
-            // Android直接跳转
-            window.location.href = urls.schemeUrl;
+            // Android: 使用intent scheme直接打开Messenger应用
+            // 先尝试使用intent方式打开应用
+            const intentUrl = `intent://send/${this.DEFAULT_PAGE_ID}#Intent;scheme=fb-messenger;package=com.facebook.orca;S.text=${urls.mMeUrl};end`;
+            window.location.href = intentUrl;
+            
+            // 设置回退：如果intent失败，使用m.me链接
+            setTimeout(() => {
+                window.location.href = mMeUrl;
+            }, 1500);
         } else {
-            // Web直接打开网页版
+            // Web: 在新标签页打开Messenger网页版
             window.open(urls.webUrl, '_blank');
-            clearTimeout(timeout);
-            return;
         }
-
-        // 监听页面隐藏事件（表示跳转成功）
-        const handleVisibilityChange = () => {
-            if (document.hidden) {
-                clearTimeout(timeout);
-                if (iframe) {
-                    document.body.removeChild(iframe);
-                }
-            }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange, { once: true });
-
-        // 清理
-        setTimeout(() => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            if (iframe && document.body.contains(iframe)) {
-                document.body.removeChild(iframe);
-            }
-        }, 3000);
     }
 
     /**
