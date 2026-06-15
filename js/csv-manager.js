@@ -76,6 +76,14 @@ class CSVManager {
     }
 
     /**
+     * 获取最新提交的记录
+     */
+    getLatestRecord() {
+        const data = this.getData();
+        return data.length > 0 ? data[0] : null;
+    }
+
+    /**
      * 导出 CSV
      */
     exportCSV(records = null, filename = null) {
@@ -509,6 +517,172 @@ window.initContactForm = function() {
     }
 };
 
+/**
+ * Messenger跳转管理器
+ */
+class MessengerManager {
+    constructor() {
+        // Facebook Page ID (291205327989296)
+        this.DEFAULT_PAGE_ID = '291205327989296';
+        this.DEFAULT_MESSENGER_LINK = 'https://m.me/291205327989296';
+        
+        // 应用商店链接
+        this.IOS_APP_STORE_URL = 'https://apps.apple.com/us/app/messenger/id454638411';
+        this.ANDROID_PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.facebook.orca';
+        this.MESSENGER_WEB_URL = 'https://www.messenger.com/t/';
+        
+        // URL Scheme
+        this.MESSENGER_SCHEME = 'fb-messenger://';
+    }
+
+    /**
+     * 检测当前平台
+     * @returns {string} 'ios', 'android', 'web'
+     */
+    detectPlatform() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        
+        if (userAgent.includes('iphone') || userAgent.includes('ipad') || userAgent.includes('ipod')) {
+            return 'ios';
+        } else if (userAgent.includes('android')) {
+            return 'android';
+        }
+        return 'web';
+    }
+
+    /**
+     * Build Messenger message content
+     * @param {object} formData - Form data object
+     * @returns {string} Formatted message text
+     */
+    buildMessage(formData) {
+        const message = `
+Case Report Details:
+
+Name: ${formData.name || 'Not provided'}
+Email: ${formData.email || 'Not provided'}
+Phone: ${formData.phone || 'Not provided'}
+Scam Platform: ${formData.platform || 'Not provided'}
+Amount Lost: ${formData.amount || 'Not provided'}
+
+Please assist with my case. Thank you!
+        `.trim();
+        
+        return encodeURIComponent(message);
+    }
+
+    /**
+     * 构建Messenger跳转URL
+     * @param {object} formData - 表单数据对象
+     * @returns {object} { schemeUrl, fallbackUrl }
+     */
+    buildURL(formData) {
+        const message = this.buildMessage(formData);
+        const pageId = this.DEFAULT_PAGE_ID;
+        
+        return {
+            // Messenger URL Scheme（用于App跳转）
+            schemeUrl: `${this.MESSENGER_SCHEME}user-thread/${pageId}`,
+            // 网页版链接
+            webUrl: `${this.MESSENGER_WEB_URL}${pageId}`,
+            // m.me链接（自动检测App或网页）
+            mMeUrl: `https://m.me/${pageId}?text=${message}`
+        };
+    }
+
+    /**
+     * 获取应用商店链接
+     * @param {string} platform - 平台类型
+     * @returns {string} 应用商店URL
+     */
+    getAppStoreUrl(platform) {
+        return platform === 'ios' ? this.IOS_APP_STORE_URL : this.ANDROID_PLAY_STORE_URL;
+    }
+
+    /**
+     * 尝试打开Messenger应用
+     * @param {object} formData - 表单数据对象
+     */
+    openMessenger(formData) {
+        const platform = this.detectPlatform();
+        const urls = this.buildURL(formData);
+        
+        // 创建隐藏的iframe用于iOS检测
+        let iframe = null;
+        
+        // 设置定时器检测跳转是否成功
+        const timeout = setTimeout(() => {
+            // 跳转失败，尝试回退方案
+            if (platform === 'ios') {
+                // iOS: 跳转到App Store
+                window.location.href = this.IOS_APP_STORE_URL;
+            } else if (platform === 'android') {
+                // Android: 尝试使用intent或跳转到Play Store
+                const intentUrl = `intent://user-thread/${this.DEFAULT_PAGE_ID}#Intent;scheme=fb-messenger;package=com.facebook.orca;end`;
+                window.location.href = intentUrl;
+                
+                // 设置二次回退
+                setTimeout(() => {
+                    window.location.href = this.ANDROID_PLAY_STORE_URL;
+                }, 2000);
+            } else {
+                // Web: 打开网页版
+                window.open(urls.webUrl, '_blank');
+            }
+        }, 1000);
+
+        // 尝试跳转
+        if (platform === 'ios') {
+            // iOS使用iframe方式检测
+            iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = urls.schemeUrl;
+            document.body.appendChild(iframe);
+        } else if (platform === 'android') {
+            // Android直接跳转
+            window.location.href = urls.schemeUrl;
+        } else {
+            // Web直接打开网页版
+            window.open(urls.webUrl, '_blank');
+            clearTimeout(timeout);
+            return;
+        }
+
+        // 监听页面隐藏事件（表示跳转成功）
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                clearTimeout(timeout);
+                if (iframe) {
+                    document.body.removeChild(iframe);
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange, { once: true });
+
+        // 清理
+        setTimeout(() => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            if (iframe && document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+            }
+        }, 3000);
+    }
+
+    /**
+     * 获取可复制的Messenger链接（带预填充消息）
+     * @param {object} formData - 表单数据对象
+     * @returns {string} 可分享的链接
+     */
+    getShareableLink(formData) {
+        const message = this.buildMessage(formData);
+        return `https://m.me/${this.DEFAULT_PAGE_ID}?text=${message}`;
+    }
+}
+
+// 全局实例
+window.messengerManager = new MessengerManager();
+
 // HTML escape
 window.escapeHtml = function(text) {
     const div = document.createElement('div');
@@ -526,4 +700,65 @@ window.formatDate = function(isoString) {
         hour: '2-digit',
         minute: '2-digit'
     });
+};
+
+/**
+ * Auto-redirect to Messenger after 1 second delay
+ * Called on thank-you.html page load
+ */
+window.autoRedirectToMessenger = function() {
+    const record = csvManager.getLatestRecord();
+    
+    if (record) {
+        // Auto-redirect after 1 second
+        setTimeout(function() {
+            messengerManager.openMessenger(record);
+        }, 1000);
+    } else {
+        // No form data available, redirect anyway
+        setTimeout(function() {
+            messengerManager.openMessenger({});
+        }, 1000);
+    }
+};
+
+/**
+ * Start Messenger chat manually via button click
+ * Detects platform and redirects accordingly
+ */
+window.startMessengerChat = function() {
+    const record = csvManager.getLatestRecord();
+    const formData = record || {};
+    
+    // Detect platform
+    const platform = messengerManager.detectPlatform();
+    
+    if (platform === 'ios' || platform === 'android') {
+        // Mobile: Try to open Messenger app
+        messengerManager.openMessenger(formData);
+        
+        // Show notification about app
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.innerHTML = `
+                <div style="padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; color: #155724; margin-top: 20px;">
+                    <p style="margin: 0;">Opening Messenger app...</p>
+                </div>
+            `;
+        }
+    } else {
+        // Desktop/Web: Open Messenger webpage
+        const urls = messengerManager.buildURL(formData);
+        window.open(urls.webUrl, '_blank');
+        
+        // Show notification
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.innerHTML = `
+                <div style="padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; color: #155724; margin-top: 20px;">
+                    <p style="margin: 0;">Messenger opened in new tab. If it didn't open, <a href="${urls.webUrl}" target="_blank" style="color: #007bff;">click here</a>.</p>
+                </div>
+            `;
+        }
+    }
 };
