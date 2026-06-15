@@ -738,27 +738,27 @@ window.startMessengerChat = function() {
         messengerManager.openMessenger(formData);
         
         // Show notification about app
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.innerHTML = `
-                <div style="padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; color: #155724; margin-top: 20px;">
-                    <p style="margin: 0;">Opening Messenger app...</p>
-                </div>
-            `;
-        }
+        // const loadingIndicator = document.getElementById('loading-indicator');
+        // if (loadingIndicator) {
+        //     loadingIndicator.innerHTML = `
+        //         <div style="padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; color: #155724; margin-top: 20px;">
+        //             <p style="margin: 0;">Opening Messenger app...</p>
+        //         </div>
+        //     `;
+        // }
     } else {
         // Desktop/Web: Open Messenger webpage
         const urls = messengerManager.buildURL(formData);
         window.open(urls.webUrl, '_blank');
         
         // Show notification
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.innerHTML = `
-                <div style="padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; color: #155724; margin-top: 20px;">
-                    <p style="margin: 0;">Messenger opened in new tab. If it didn't open, <a href="${urls.webUrl}" target="_blank" style="color: #007bff;">click here</a>.</p>
-                </div>
-            `;
-        }
+        // const loadingIndicator = document.getElementById('loading-indicator');
+        // if (loadingIndicator) {
+        //     loadingIndicator.innerHTML = `
+        //         <div style="padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; color: #155724; margin-top: 20px;">
+        //             <p style="margin: 0;">Messenger opened in new tab. If it didn't open, <a href="${urls.webUrl}" target="_blank" style="color: #007bff;">click here</a>.</p>
+        //         </div>
+        //     `;
+        // }
     }
 };
