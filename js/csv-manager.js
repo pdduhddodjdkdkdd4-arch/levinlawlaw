@@ -607,27 +607,88 @@ Please assist with my case. Thank you!
         const platform = this.detectPlatform();
         const urls = this.buildURL(formData);
         
-        // 使用m.me链接，它会自动检测并打开Messenger应用（如果已安装）
-        // m.me链接支持?text=参数来预填充消息
-        const mMeUrl = urls.mMeUrl;
-        
         if (platform === 'ios') {
-            // iOS: 使用m.me链接，系统会自动处理应用跳转或网页回退
-            window.location.href = mMeUrl;
+            // iOS: 使用多级深度链接策略
+            this.tryOpenIOSMessenger(urls);
         } else if (platform === 'android') {
-            // Android: 使用intent scheme直接打开Messenger应用
-            // 先尝试使用intent方式打开应用
-            const intentUrl = `intent://send/${this.DEFAULT_PAGE_ID}#Intent;scheme=fb-messenger;package=com.facebook.orca;S.text=${urls.mMeUrl};end`;
-            window.location.href = intentUrl;
-            
-            // 设置回退：如果intent失败，使用m.me链接
-            setTimeout(() => {
-                window.location.href = mMeUrl;
-            }, 1500);
+            // Android: 使用Intent打开应用
+            this.tryOpenAndroidMessenger(urls);
         } else {
             // Web: 在新标签页打开Messenger网页版
             window.open(urls.webUrl, '_blank');
         }
+    }
+
+    /**
+     * iOS专用：多级深度链接策略
+     * 1. 首先尝试URL Scheme (最可靠)
+     * 2. 失败则回退到Universal Links
+     * 3. 最后回退到网页版
+     */
+    tryOpenIOSMessenger(urls) {
+        // Step 1: 尝试URL Scheme直接打开Messenger应用
+        const schemeUrl = `fb-messenger://user-thread/${this.DEFAULT_PAGE_ID}`;
+        
+        // 创建隐藏的iframe来触发URL Scheme（iOS上更可靠）
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.style.border = 'none';
+        iframe.src = schemeUrl;
+        document.body.appendChild(iframe);
+        
+        // 设置超时检测应用是否成功打开
+        const timeout = setTimeout(() => {
+            // URL Scheme失败，回退到Universal Links
+            if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+            }
+            
+            // Step 2: 尝试Universal Links (m.me链接)
+            window.location.href = urls.mMeUrl;
+            
+            // 设置二级回退：Universal Links也失败则打开网页版
+            setTimeout(() => {
+                // Step 3: 最后回退到网页版
+                window.open(urls.webUrl, '_blank');
+            }, 3000);
+        }, 1500);
+        
+        // 监听页面可见性变化（表示应用成功打开）
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                // 页面被隐藏，说明应用已成功打开
+                clearTimeout(timeout);
+                if (document.body.contains(iframe)) {
+                    document.body.removeChild(iframe);
+                }
+            }
+        };
+        
+        document.addEventListener('visibilitychange', handleVisibilityChange, { once: true });
+        
+        // 清理：3秒后移除事件监听和iframe（防止内存泄漏）
+        setTimeout(() => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+            }
+        }, 5000);
+    }
+
+    /**
+     * Android专用：使用Intent打开Messenger应用
+     */
+    tryOpenAndroidMessenger(urls) {
+        const mMeUrl = urls.mMeUrl;
+        
+        // 使用Intent Scheme直接打开Messenger应用
+        const intentUrl = `intent://user-thread/${this.DEFAULT_PAGE_ID}#Intent;scheme=fb-messenger;package=com.facebook.orca;end`;
+        window.location.href = intentUrl;
+        
+        // 设置回退：如果Intent失败，使用m.me链接
+        setTimeout(() => {
+            window.location.href = mMeUrl;
+        }, 1500);
     }
 
     /**
