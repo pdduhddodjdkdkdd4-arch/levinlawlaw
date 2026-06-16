@@ -1,0 +1,12 @@
+- [ ] PHP API 文件已创建且结构正确（api/config.php, auth.php, records.php, export.php, middleware.php, .htaccess）
+- [ ] MySQL 数据库表创建成功（form_submissions, admin_users），默认管理员账户可登录
+- [ ] .htaccess 安全规则生效（阻止直接访问 config.php，CORS 头正确配置）
+- [ ] 前端表单提交后数据写入 MySQL 而非 localStorage
+- [ ] 管理员登录通过 PHP API 验证，JWT token 正常生成和使用
+- [ ] 管理后台页面可正常加载、查看、编辑、删除数据库中的记录
+- [ ] CSV 导出功能正常工作（从数据库查询后导出）
+- [ ] 所有 15 个引用 csv-manager.js 的 HTML 页面表单提交功能正常
+- [ ] 数据库密码等敏感信息不在代码中硬编码，通过 config.php 配置管理
+- [ ] 所有 SQL 查询使用 prepared statements 防止注入
+- [ ] 管理员密码使用 password_hash() 加密存储
+- [ ] 兼容 GoDaddy cPanel 共享主机环境（PHP + MySQL + Apache）

@@ -5,9 +5,9 @@
 After completing any code modification task and verifying the code is correct, you MUST:
 
 1. **Create a new branch** from `main` for each task:
-   - Branch naming convention: `feature/<brief-description>` or `fix/<brief-description>`
-   - Example: `feature/fix-counter-nan`, `fix/contact-form-validation`
-   - Use English for branch names, keep them concise and descriptive
+   - Branch naming convention: `<YYYYMMDD>_<修改标题总结>`
+   - Example: `20260510_更新域名和邮箱`, `20260511_修复计数器NaN问题`
+   - 时间格式为年月日，标题用中文简要概括本次修改内容
 
 2. **Commit changes** to the new branch:
    - Stage all modified files: `git add -A`
@@ -31,14 +31,14 @@ After completing any code modification task and verifying the code is correct, y
 ```bash
 # Start of task
 git checkout main
-git checkout -b feature/add-dark-mode
+git checkout -b 20260510_更新域名和邮箱
 
 # ... make code changes ...
 
 # After verifying code is correct
 git add -A
-git commit -m "feat: add dark mode toggle"
-git push -u origin feature/add-dark-mode
+git commit -m "feat: update domain and email"
+git push -u origin 20260510_更新域名和邮箱
 git checkout main
 ```
 
